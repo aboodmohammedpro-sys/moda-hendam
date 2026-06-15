@@ -24,7 +24,8 @@ class DatabaseSeeder extends Seeder
         ]);
 
         $this->call([
-            DesignSeeder::class
+            DesignSeeder::class,
+            CouponSeeder::class
         ]);
     }
 }

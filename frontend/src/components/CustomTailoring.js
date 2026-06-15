@@ -24,6 +24,12 @@ export default function CustomTailoring() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
 
+  // Coupon state
+  const [couponCode, setCouponCode] = useState('');
+  const [appliedCoupon, setAppliedCoupon] = useState(null);
+  const [couponError, setCouponError] = useState('');
+  const [couponLoading, setCouponLoading] = useState(false);
+
   useEffect(() => {
     const loadInitialData = async () => {
       try {
@@ -66,6 +72,61 @@ export default function CustomTailoring() {
     setCustomDetails(prev => ({ ...prev, [key]: value }));
   };
 
+  const calculateSubtotal = () => {
+    if (!selectedDesign || !selectedFabric) return 0;
+    const fabricPrice = parseFloat(selectedFabric.price_per_meter || 0);
+    const designPrice = parseFloat(selectedDesign.base_tailoring_price || 0);
+    return designPrice + (fabricPrice * 3.5);
+  };
+
+  const calculateDiscount = () => {
+    if (!appliedCoupon) return 0;
+    const subtotal = calculateSubtotal();
+    if (appliedCoupon.type === 'fixed') {
+      return parseFloat(appliedCoupon.value);
+    } else if (appliedCoupon.type === 'percentage') {
+      let discount = subtotal * (parseFloat(appliedCoupon.value) / 100);
+      if (appliedCoupon.max_discount) {
+        discount = Math.min(discount, parseFloat(appliedCoupon.max_discount));
+      }
+      return discount;
+    }
+    return 0;
+  };
+
+  const handleApplyCoupon = async (e) => {
+    e.preventDefault();
+    if (!couponCode.trim()) return;
+
+    setCouponLoading(true);
+    setCouponError('');
+    setAppliedCoupon(null);
+
+    try {
+      const res = await fetch('http://localhost:8000/api/v1/tailoring/coupons/validate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify({ code: couponCode })
+      });
+
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setAppliedCoupon(data.coupon);
+        setCouponError('');
+      } else {
+        setCouponError(data.message || 'الكوبون غير صالح.');
+      }
+    } catch (err) {
+      console.error(err);
+      setCouponError('خطأ في الاتصال بالخادم.');
+    } finally {
+      setCouponLoading(false);
+    }
+  };
+
   const handlePlaceOrder = async () => {
     if (!selectedDesign) return setError('الرجاء اختيار تصميم أولاً.');
     if (!selectedMeasurement) return setError('الرجاء تحديد مقاساتك.');
@@ -75,15 +136,16 @@ export default function CustomTailoring() {
     setLoading(true);
     setError('');
 
-    // Unit price = design base price + fabric price * 3 (assumed average 3 meters required)
-    const fabricPrice = parseFloat(selectedFabric.price_per_meter || 0);
-    const designPrice = parseFloat(selectedDesign.base_tailoring_price || 0);
-    const calculatedUnitPrice = designPrice + (fabricPrice * 3.5);
+    const subtotal = calculateSubtotal();
+    const discountAmount = calculateDiscount();
+    const calculatedUnitPrice = Math.max(0, subtotal - discountAmount);
 
     const orderPayload = {
       type: 'tailoring',
       shipping_address: address,
-      notes: notes,
+      notes: appliedCoupon 
+        ? `${notes} (كود الخصم: ${appliedCoupon.code} - خصم بقيمة ${discountAmount.toFixed(2)} ر.س)`
+        : notes,
       items: [
         {
           product_id: selectedFabric.id,
@@ -402,22 +464,53 @@ export default function CustomTailoring() {
             <div className="space-y-4">
               <div className="bg-blue-50 p-6 rounded-2xl border border-blue-100">
                 <h4 className="font-bold text-lg text-blue-800 mb-3">ملخص الفاتورة</h4>
-                <div className="flex justify-between mb-2 text-gray-600">
+                <div className="flex justify-between mb-2 text-gray-600 bg-white/40 p-2 rounded-lg">
                   <span>موديل: {selectedDesign?.title}</span>
                   <span>{selectedDesign?.base_tailoring_price} ر.س</span>
                 </div>
-                <div className="flex justify-between mb-2 text-gray-600">
+                <div className="flex justify-between mb-2 text-gray-600 bg-white/40 p-2 rounded-lg">
                   <span>قماش: {selectedFabric?.name} (3.5 متر)</span>
                   <span>{(parseFloat(selectedFabric?.price_per_meter || 0) * 3.5).toFixed(2)} ر.س</span>
                 </div>
-                <div className="flex justify-between mb-2 text-gray-600">
+                
+                {appliedCoupon && (
+                  <div className="flex justify-between mb-2 text-green-700 font-bold bg-green-50/50 p-2 rounded-lg border border-green-100">
+                    <span>خصم الكوبون ({appliedCoupon.code})</span>
+                    <span>-{calculateDiscount().toFixed(2)} ر.س</span>
+                  </div>
+                )}
+
+                <div className="flex justify-between mb-2 text-gray-600 bg-white/40 p-2 rounded-lg">
                   <span>التوصيل والشحن</span>
                   <span className="text-green-600 font-bold">مجاني</span>
                 </div>
-                <div className="flex justify-between mt-4 border-t pt-4 font-bold text-xl text-blue-900">
+                <div className="flex justify-between mt-4 border-t pt-4 font-bold text-xl text-blue-950">
                   <span>الإجمالي المتوقع</span>
-                  <span>{(parseFloat(selectedDesign?.base_tailoring_price || 0) + parseFloat(selectedFabric?.price_per_meter || 0) * 3.5).toFixed(2)} ر.س</span>
+                  <span>{Math.max(0, calculateSubtotal() - calculateDiscount()).toFixed(2)} ر.س</span>
                 </div>
+              </div>
+
+              {/* Coupon Section */}
+              <div className="bg-gray-50 p-4 rounded-2xl border border-gray-200">
+                <label className="block text-sm text-gray-700 mb-2 font-medium">كوبون الخصم</label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={couponCode}
+                    onChange={(e) => setCouponCode(e.target.value)}
+                    placeholder="رمز الكوبون..."
+                    className="flex-grow px-3 py-1.5 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 uppercase bg-white"
+                  />
+                  <button
+                    onClick={handleApplyCoupon}
+                    disabled={couponLoading}
+                    className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-4 py-2 rounded-lg transition"
+                  >
+                    {couponLoading ? '...' : 'تطبيق'}
+                  </button>
+                </div>
+                {couponError && <p className="text-xs text-red-500 mt-1">{couponError}</p>}
+                {appliedCoupon && <p className="text-xs text-green-600 mt-1">✓ تم تطبيق كود الخصم بنجاح.</p>}
               </div>
 
               <div>
@@ -425,7 +518,7 @@ export default function CustomTailoring() {
                 <textarea
                   value={address}
                   onChange={(e) => setAddress(e.target.value)}
-                  className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
                   rows="2"
                   placeholder="المدينة، الحي، الشارع، المبنى..."
                   required
@@ -437,7 +530,7 @@ export default function CustomTailoring() {
                 <textarea
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
-                  className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
                   rows="2"
                   placeholder="مثال: أرغب بطول رقبة أقصر قليلاً..."
                 ></textarea>
