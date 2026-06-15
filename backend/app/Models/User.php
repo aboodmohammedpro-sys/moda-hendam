@@ -67,4 +67,12 @@ class User extends Authenticatable
     {
         return $this->hasMany(Shop::class, 'owner_id');
     }
+
+    /**
+     * Get the user's orders.
+     */
+    public function orders()
+    {
+        return $this->hasMany(Order::class);
+    }
 }

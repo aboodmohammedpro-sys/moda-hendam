@@ -5,6 +5,7 @@ use App\Modules\Tailoring\Controllers\MeasurementController;
 use App\Modules\Tailoring\Controllers\FabricController;
 use App\Modules\ECommerce\Controllers\ShopController;
 use App\Modules\ECommerce\Controllers\ReadyMadeProductController;
+use App\Modules\ECommerce\Controllers\OrderController;
 
 // Public routes
 Route::apiResource('products', ReadyMadeProductController::class)->only(['index', 'show']);
@@ -14,4 +15,5 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('fabrics', FabricController::class);
     Route::apiResource('shops', ShopController::class)->except(['destroy']);
     Route::apiResource('products', ReadyMadeProductController::class)->except(['index', 'show']);
+    Route::apiResource('orders', OrderController::class)->only(['index', 'store', 'show']);
 });
