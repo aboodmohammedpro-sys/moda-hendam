@@ -59,4 +59,12 @@ class User extends Authenticatable
     {
         return $this->hasMany(Measurement::class);
     }
+
+    /**
+     * Get the user's shops.
+     */
+    public function shops()
+    {
+        return $this->hasMany(Shop::class, 'owner_id');
+    }
 }
