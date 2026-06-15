@@ -27,4 +27,9 @@ class Shop extends Model
     {
         return $this->hasMany(Fabric::class);
     }
+
+    public function readyMadeProducts()
+    {
+        return $this->hasMany(ReadyMadeProduct::class);
+    }
 }
