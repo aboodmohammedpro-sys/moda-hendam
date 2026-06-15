@@ -5,6 +5,7 @@ import MeasurementForm from '../components/MeasurementForm';
 import FabricManager from '../components/FabricManager';
 import ProductList from '../components/ProductList';
 import Cart from '../components/Cart';
+import CustomTailoring from '../components/CustomTailoring';
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState('products');
@@ -15,6 +16,7 @@ export default function Home() {
       case 'fabric': return <FabricManager shopId="1" />;
       case 'products': return <ProductList />;
       case 'cart': return <Cart />;
+      case 'tailoring': return <CustomTailoring />;
       default: return <ProductList />;
     }
   };
@@ -26,6 +28,7 @@ export default function Home() {
           <h1 className="text-2xl font-bold text-blue-600">موضة هندام (نسخة العرض التجريبية)</h1>
           <nav className="flex flex-wrap justify-center gap-2">
             <button onClick={() => setActiveTab('products')} className={`px-4 py-2 font-medium rounded-lg transition ${activeTab === 'products' ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-100 border'}`}>المنتجات الجاهزة</button>
+            <button onClick={() => setActiveTab('tailoring')} className={`px-4 py-2 font-medium rounded-lg transition ${activeTab === 'tailoring' ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-100 border'}`}>تفصيل مخصص</button>
             <button onClick={() => setActiveTab('cart')} className={`px-4 py-2 font-medium rounded-lg transition ${activeTab === 'cart' ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-100 border'}`}>سلة التسوق</button>
             <button onClick={() => setActiveTab('measurements')} className={`px-4 py-2 font-medium rounded-lg transition ${activeTab === 'measurements' ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-100 border'}`}>واجهة المقاسات</button>
             <button onClick={() => setActiveTab('fabric')} className={`px-4 py-2 font-medium rounded-lg transition ${activeTab === 'fabric' ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-100 border'}`}>إدارة الأقمشة (للتاجر)</button>
