@@ -51,4 +51,12 @@ class User extends Authenticatable
             'password' => 'hashed',
         ];
     }
+
+    /**
+     * Get the user's measurements.
+     */
+    public function measurements()
+    {
+        return $this->hasMany(Measurement::class);
+    }
 }
