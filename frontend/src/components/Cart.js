@@ -17,9 +17,8 @@ export default function Cart() {
 
     const formattedItems = cartItems.map(item => ({
       product_id: item.id,
-      product_type: 'ready_made',
       quantity: item.quantity,
-      price_per_unit: item.price
+      unit_price: item.price
     }));
 
     try {
@@ -31,6 +30,7 @@ export default function Cart() {
           // 'Authorization': `Bearer YOUR_AUTH_TOKEN`
         },
         body: JSON.stringify({
+          type: 'ready_made',
           items: formattedItems,
           shipping_address: address,
           notes: 'طلب من السلة'
