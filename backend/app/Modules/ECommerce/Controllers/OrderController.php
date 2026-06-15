@@ -20,11 +20,14 @@ class OrderController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
+            'type' => 'required|in:tailoring,ready_made',
             'items' => 'required|array|min:1',
-            'items.*.product_id' => 'required|uuid',
-            'items.*.product_type' => 'required|in:ready_made,custom',
+            'items.*.product_id' => 'nullable|uuid', // fabric_id for tailoring, or product_id for ready_made
+            'items.*.design_id' => 'nullable|uuid',
+            'items.*.measurement_id' => 'nullable|uuid',
             'items.*.quantity' => 'required|integer|min:1',
-            'items.*.price_per_unit' => 'required|numeric|min:0',
+            'items.*.unit_price' => 'required|numeric|min:0',
+            'items.*.custom_details' => 'nullable|array',
             'shipping_address' => 'required|string',
             'notes' => 'nullable|string'
         ]);
@@ -34,10 +37,11 @@ class OrderController extends Controller
 
             $totalAmount = 0;
             foreach ($validated['items'] as $item) {
-                $totalAmount += $item['quantity'] * $item['price_per_unit'];
+                $totalAmount += $item['quantity'] * $item['unit_price'];
             }
 
             $order = $request->user()->orders()->create([
+                'type' => $validated['type'],
                 'total_amount' => $totalAmount,
                 'status' => 'pending',
                 'payment_status' => 'unpaid',
@@ -47,11 +51,12 @@ class OrderController extends Controller
 
             foreach ($validated['items'] as $item) {
                 $order->items()->create([
-                    'product_id' => $item['product_id'],
-                    'product_type' => $item['product_type'],
+                    'product_id' => $item['product_id'] ?? null,
+                    'design_id' => $item['design_id'] ?? null,
+                    'measurement_id' => $item['measurement_id'] ?? null,
                     'quantity' => $item['quantity'],
-                    'price_per_unit' => $item['price_per_unit'],
-                    'total_price' => $item['quantity'] * $item['price_per_unit']
+                    'unit_price' => $item['unit_price'],
+                    'custom_details' => isset($item['custom_details']) ? json_encode($item['custom_details']) : null
                 ]);
             }
 
@@ -65,7 +70,7 @@ class OrderController extends Controller
 
     public function show(Request $request, Order $order)
     {
-        if ($request->user()->role !== 'admin' && $order->user_id !== $request->user()->id) {
+        if ($request->user()->role !== 'admin' && $order->customer_id !== $request->user()->id) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
         return response()->json($order->load('items'));
